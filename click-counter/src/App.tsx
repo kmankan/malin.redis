@@ -47,10 +47,31 @@ function App() {
       } else {
         setIsBlocked(true)
         setMessage('Too many clicks! Wait a few seconds...')
-        setTimeout(() => setIsBlocked(false), 7000)
+        setTimeout(() => {
+          setIsBlocked(false)
+          setMessage('')
+        }, 7000)
       }
     } catch (error) {
       setMessage('Error counting click')
+      console.error(error)
+    }
+  }
+
+  const handleReset = async () => {
+    if (!userId) return
+
+    try {
+      const response = await fetch(`http://localhost:3090/reset-clicks/${userId}`, {
+        method: 'POST',
+      })
+
+      if (response.ok) {
+        setClicks(0)
+        setMessage('Counter reset!')
+      }
+    } catch (error) {
+      setMessage('Error resetting counter')
       console.error(error)
     }
   }
@@ -67,7 +88,16 @@ function App() {
           >
             Click Me!
           </button>
-          <p className="text-xl mt-4">Total Clicks: {clicks}</p>
+          <div className="flex flex-col items-center gap-2 mt-4">
+            <div className="text-xl">Total Clicks: {clicks}</div>
+            <button
+              onClick={handleReset}
+              className="btn btn-xs btn-error"
+              disabled={isBlocked}
+            >
+              Reset
+            </button>
+          </div>
           {message && <p className="text-sm opacity-75 mt-2">{message}</p>}
         </div>
       </div>
