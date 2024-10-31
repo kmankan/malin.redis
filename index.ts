@@ -1,76 +1,44 @@
-import Redis from "ioredis"
+// server.ts
+import express from 'express'
+import type { Request, Response } from 'express'
+import Redis from 'ioredis'
+import cors from 'cors'
 
-// Initialize Redis client
-const redis = new Redis({
-  port: 6379,
-  host: 'localhost',
-});
+const app = express()
+const redis = new Redis()
 
-//set/get
-const basicSetGet = async () => {
-  // We will set a simple key value pair
-  await redis.set('greeting', 'Hello!');
+app.use(cors())
+app.use(express.json())
 
-  // We will get the value
-  const value = await redis.get('greeting')
-  console.log('retrieved:', value)
-
-
-  // Set with expiration (5 seconds)
-  await redis.set('temporary', 'I will disappear in 5 seconds', 'EX', 5);
-
-   // Wait 4 seconds and try to get the expired key --> should succeed
-   await new Promise(resolve => setTimeout(resolve, 4000));
-   const tempValue = await redis.get('temporary') ?? 'could not find anything';
-   console.log('Expired value:', tempValue);
-
-  // Wait 6 seconds and try to get the expired key
-  await new Promise(resolve => setTimeout(resolve, 6000));
-  const expiredValue = await redis.get('temporary') ?? 'could not find anything';
-  console.log('Expired value:', expiredValue); // Should be null
-}
-
-const workingWithLists = async () => {
-  let currentList;
-  // we clear the existing list
-  await redis.del('mylist')
-
-  // ! to retrieve a list we need to use redis.lrange()
-
-  // push elements to the right of a list
-  await redis.rpush('mylist', 'A')
-  currentList = await redis.lrange('mylist', 0, -1) // Get all elements
-  console.log(currentList)
-  await redis.rpush('mylist', 'B')
-  currentList = await redis.lrange('mylist', 0, -1)
-  console.log(currentList)
-  await redis.rpush('mylist', 'C')
-  currentList = await redis.lrange('mylist', 0, -1)
-  console.log(currentList)
-
-  // push elements to the left of a list
-  await redis.lpush('mylist', 'D')
-  currentList = await redis.lrange('mylist', 0, -1)
-  console.log(currentList)
-  await redis.lpush('mylist', 'E')
-  currentList = await redis.lrange('mylist', 0, -1)
-  console.log(currentList)
-  await redis.lpush('mylist', 'F')
-  currentList = await redis.lrange('mylist', 0, -1)
-  console.log(currentList)
-  // pop an element from the right
-  const rightElement = await redis.rpop('mylist');
-  console.log(rightElement)
-  currentList = await redis.lrange('mylist', 0, -1)
-  console.log(currentList)
-}
-
-
-
-const main = async () => {
-  // basicSetGet();
-  await workingWithLists()
-  await redis.quit();
-}
-
-main();
+app.post('/click/:id', async (req: Request, res:Response): Promise<void> => {
+  const clickId = req.params.id
+  const key = 'click-count'
+  
+  try {
+    // Get current count in window
+    const windowCount = await redis.incr(key)
+    
+    // Set 10 second expiry on first click in window
+    if (windowCount === 1) {
+      await redis.expire(key, 10)
+    }
+    
+    // Check if over rate limit
+    if (windowCount > 10) {
+      console.log('clicks exceeded')
+      return res.status(429).json({ 
+        error: 'Too many clicks' 
+      })
+    }
+    // track persistent number of clicks
+    const persistentCount = await redis.incr(clickId)
+    res.json({ clicks: persistentCount })
+    console.log('current clicks', windowCount, 'total clicks', persistentCount)
+  } catch (error) {
+    res.status(500).json({ error: 'Server error' })
+  }
+})
+const PORT = 3090
+app.listen(3090, () => {
+  console.log('Server running on port', PORT)
+})
