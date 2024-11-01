@@ -25,7 +25,8 @@ app.get('/register-user', async (req: Request, res: Response): Promise<void> => 
 app.post('/click-queue/:userId', async (req: Request, res: Response): Promise<void> => {
   const { userId } = req.params;
   if (!userId) {
-    return res.status(400).json({ error: 'userId is required' });
+    res.status(400).json({ error: 'userId is required' });
+    return;
   }
 
   try {
@@ -40,12 +41,29 @@ app.post('/click-queue/:userId', async (req: Request, res: Response): Promise<vo
     
     // Rate limiting
     if (count > 10) {
-      return res.status(429).json({ error: 'Too many clicks' });
+      res.status(429).json({ error: 'Too many clicks' });
+      return;
     }
     // Keep track of total clicks separately (if needed)
     const globalCount = await redis.incr(`globalCount-${userId}`);
     console.log(userId, 'has', globalCount, 'clicks')
     res.json({ clicks: globalCount });
+  } catch (error) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Add new reset endpoint
+app.post('/reset-clicks/:userId', async (req: Request, res: Response): Promise<void> => {
+  const { userId } = req.params;
+  if (!userId) {
+    res.status(400).json({ error: 'userId is required' });
+    return;
+  }
+
+  try {
+    await redis.set(`globalCount-${userId}`, 0);
+    res.json({ clicks: 0 });
   } catch (error) {
     res.status(500).json({ error: 'Server error' });
   }
