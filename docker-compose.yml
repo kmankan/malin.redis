@@ -1,0 +1,24 @@
+version: '3.8'
+
+services:
+  redis:
+    image: redis:latest
+    container_name: my-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes  # Enable persistence
+    restart: unless-stopped
+    environment:
+      - REDIS_REPLICATION_MODE=master
+    networks:
+      - redis-network
+
+volumes:
+  redis_data:
+    driver: local
+
+networks:
+  redis-network:
+    driver: bridge
