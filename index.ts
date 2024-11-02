@@ -40,6 +40,7 @@ app.get('/', async (req: Request, res: Response) => {
 // New endpoint to get userId
 app.get('/register-user', async (req: Request, res: Response): Promise<void> => {
   const userId = generateUniqueId();
+  console.log('a new user has joined, welcome:', userId)
   res.json({ userId });
 });
 
