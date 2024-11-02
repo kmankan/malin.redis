@@ -33,6 +33,11 @@ function generateUniqueId(): string {
 }
 
 // New endpoint to get userId
+app.get('/', async (req: Request, res: Response): Promise<void> => {
+  res.json("Hey you've successfully reached this page!");
+});
+
+// New endpoint to get userId
 app.get('/register-user', async (req: Request, res: Response): Promise<void> => {
   const userId = generateUniqueId();
   res.json({ userId });
