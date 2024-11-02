@@ -5,8 +5,25 @@ import Redis from 'ioredis'
 import cors from 'cors'
 
 const app = express()
-const redis = new Redis()
-let uuid;
+
+// Create redis client with error handling
+const redis = new Redis(process.env.REDIS_URL, {
+  retryStrategy(times) {
+    const delay = Math.min(times * 50, 2000);
+    return delay;
+  },
+  maxRetriesPerRequest: null,
+  enableReadyCheck: false
+});
+
+// Add error handling for Redis connection
+redis.on('error', (error) => {
+  console.error('Redis connection error:', error);
+});
+
+redis.on('connect', () => {
+  console.log('Successfully connected to Redis');
+});
 
 app.use(cors())
 app.use(express.json())
@@ -20,6 +37,7 @@ app.get('/register-user', async (req: Request, res: Response): Promise<void> => 
   const userId = generateUniqueId();
   res.json({ userId });
 });
+
 
 // Simplified click counter endpoint
 app.post('/click-queue/:userId', async (req: Request, res: Response): Promise<void> => {
